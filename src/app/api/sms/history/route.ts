@@ -26,9 +26,22 @@ export async function GET(request: Request) {
     // Получаем токен
     const token = await getEskizToken();
     
-    // Запрашиваем историю (ограничение до 20 элементов на страницу обычно настраивается на стороне API или уже встроено)
-    // Метод для получения истории рассылок (у каждого пользователя может быть разным, но обычно это get-user-messages)
-    const response = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages?page=${page}`, {
+    // Формируем даты для запроса (Eskiz требует start_date и end_date для истории)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30); // История за последние 30 дней
+    
+    const formatStr = (d: Date) => d.toISOString().split('T')[0] + ' 00:00:00';
+    const sDate = formatStr(startDate);
+    const eDate = endDate.toISOString().split('T')[0] + ' 23:59:59';
+    
+    const params = new URLSearchParams({
+      page: page,
+      start_date: sDate,
+      end_date: eDate
+    });
+
+    const response = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -36,14 +49,18 @@ export async function GET(request: Request) {
     });
     
     if (!response.ok) {
-        // Если GET не сработал, попробуем POST, так как Eskiz часто использует POST для всего
+        // Если GET не сработал, пробуем POST с параметрами в body
         const fallbackResponse = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ page })
+            body: JSON.stringify({ 
+              page: parseInt(page),
+              start_date: sDate,
+              end_date: eDate
+            })
         });
         
         if (!fallbackResponse.ok) {
