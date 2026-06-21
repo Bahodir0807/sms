@@ -25,6 +25,16 @@ export default function Home() {
     if (auth === 'true') {
       setIsAuthenticated(true);
     }
+    
+    // Подгружаем историю из локального хранилища браузера
+    const savedHistory = localStorage.getItem('sms_gw_history');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to parse history');
+      }
+    }
   }, []);
 
   const handleLogin = (e: FormEvent) => {
@@ -45,7 +55,12 @@ export default function Home() {
   };
 
   const handleNewSent = (newMessages: SmsMessage[]) => {
-    setHistory((prev) => [...newMessages, ...prev]);
+    setHistory((prev) => {
+      // Оставляем до 200 сообщений, чтобы можно было листать, но не перегружать память
+      const updated = [...newMessages, ...prev].slice(0, 200);
+      localStorage.setItem('sms_gw_history', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleSelectContact = (phone: string) => {
