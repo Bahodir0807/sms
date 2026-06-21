@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // Получаем токен
     const token = await getEskizToken();
     
-    // Формируем даты для запроса (Eskiz требует start_date и end_date для истории)
+    // Формируем даты для запроса (Eskiz требует start_date и end_date)
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30); // История за последние 30 дней
@@ -34,47 +34,34 @@ export async function GET(request: Request) {
     const formatStr = (d: Date) => d.toISOString().split('T')[0] + ' 00:00:00';
     const sDate = formatStr(startDate);
     const eDate = endDate.toISOString().split('T')[0] + ' 23:59:59';
-    
-    const params = new URLSearchParams({
-      page: page,
-      start_date: sDate,
-      end_date: eDate
-    });
 
-    const response = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages?${params.toString()}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+    // Делаем POST запрос, так как GET возвращает 404
+    const formData = new URLSearchParams();
+    formData.append('start_date', sDate);
+    formData.append('end_date', eDate);
+    // Для Eskiz иногда page должен передаваться в URL, а иногда в body. 
+    // Обычно для GET это URL, а для POST может быть и так и так.
+    
+    const response = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages?page=${page}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: formData.toString()
     });
     
     if (!response.ok) {
-        // Если GET не сработал, пробуем POST с параметрами в body
-        const fallbackResponse = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-              page: parseInt(page),
-              start_date: sDate,
-              end_date: eDate
-            })
-        });
-        
-        if (!fallbackResponse.ok) {
-            return NextResponse.json({ error: 'Failed to fetch from Eskiz' }, { status: fallbackResponse.status });
-        }
-        
-        const fallbackData = await fallbackResponse.json();
-        return NextResponse.json(fallbackData);
+        // Читаем текст ошибки напрямую от Eskiz, чтобы понять что именно им не нравится
+        const errText = await response.text();
+        console.error('Eskiz 400 Error Body:', errText);
+        return NextResponse.json({ error: 'Eskiz API error', details: errText }, { status: response.status });
     }
     
     const data = await response.json();
     return NextResponse.json(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error('History API error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error', msg: error.message }, { status: 500 });
   }
 }
