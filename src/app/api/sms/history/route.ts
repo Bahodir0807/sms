@@ -26,14 +26,19 @@ export async function GET(request: Request) {
     // Получаем токен
     const token = await getEskizToken();
     
-    // Формируем даты для запроса (Eskiz требует start_date и end_date)
+    // Формируем даты для запроса (Eskiz требует формат YYYY-MM-DD HH:MM)
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30); // История за последние 30 дней
     
-    const formatStr = (d: Date) => d.toISOString().split('T')[0] + ' 00:00:00';
+    // Формат 2006-01-02 15:04 (без секунд)
+    const formatStr = (d: Date) => {
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    };
+    
     const sDate = formatStr(startDate);
-    const eDate = endDate.toISOString().split('T')[0] + ' 23:59:59';
+    const eDate = formatStr(endDate);
 
     // Делаем POST запрос, так как GET возвращает 404
     const formData = new URLSearchParams();
