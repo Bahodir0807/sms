@@ -50,7 +50,7 @@ export default function SmsHistory({ items: localItems }: { items: SmsMessage[] 
 
         const fetchedMessages = messagesArray.map((msg: any) => ({
           id: msg.id || Math.random().toString(),
-          phone: msg.mobile_phone || msg.phone || 'Unknown',
+          phone: msg.to || msg.mobile_phone || msg.phone || 'Unknown',
           text: msg.message || msg.text || '',
           status: (msg.status || 'sent').toLowerCase(),
           createdAt: msg.created_at || msg.date || new Date().toISOString()
