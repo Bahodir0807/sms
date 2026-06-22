@@ -33,10 +33,22 @@ export default function SmsHistory({ items: localItems }: { items: SmsMessage[] 
       const res = await fetch(`/api/sms/history?page=${targetPage}`);
       if (res.ok) {
         const data = await res.json();
+        console.log('Eskiz API Response:', data); // Выводим в консоль для дебага
         
-        // Маппинг ответа Eskiz в наш формат (в зависимости от реального ответа Eskiz)
-        // Предполагаем, что Eskiz возвращает массив сообщений в data.data.data
-        const fetchedMessages = (data?.data?.data || data?.data || []).map((msg: any) => ({
+        // Надежно ищем массив с сообщениями в ответе Eskiz
+        let messagesArray: any[] = [];
+        if (Array.isArray(data)) messagesArray = data;
+        else if (Array.isArray(data?.data)) messagesArray = data.data;
+        else if (Array.isArray(data?.data?.data)) messagesArray = data.data.data;
+        else if (Array.isArray(data?.data?.messages)) messagesArray = data.data.messages;
+        else if (Array.isArray(data?.messages)) messagesArray = data.messages;
+        else if (typeof data?.data === 'object') {
+           // Если это объект, попробуем найти в нем массив
+           const arraysInObject = Object.values(data.data).find(val => Array.isArray(val));
+           if (arraysInObject) messagesArray = arraysInObject as any[];
+        }
+
+        const fetchedMessages = messagesArray.map((msg: any) => ({
           id: msg.id || Math.random().toString(),
           phone: msg.mobile_phone || msg.phone || 'Unknown',
           text: msg.message || msg.text || '',
