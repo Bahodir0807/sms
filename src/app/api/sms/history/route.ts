@@ -40,20 +40,19 @@ export async function GET(request: Request) {
     const sDate = formatStr(startDate);
     const eDate = formatStr(endDate);
 
-    // Делаем POST запрос, так как GET возвращает 404
-    const formData = new URLSearchParams();
-    formData.append('start_date', sDate);
-    formData.append('end_date', eDate);
-    // Для Eskiz иногда page должен передаваться в URL, а иногда в body. 
-    // Обычно для GET это URL, а для POST может быть и так и так.
+    const payload = {
+      start_date: sDate,
+      end_date: eDate
+    };
     
+    // Отправляем как JSON, так как URL-кодированный пробел (+) может не восприниматься Go-сервером
     const response = await fetch(`${ESKIZ_API_URL}/message/sms/get-user-messages?page=${page}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
+          'Content-Type': 'application/json'
         },
-        body: formData.toString()
+        body: JSON.stringify(payload)
     });
     
     if (!response.ok) {
